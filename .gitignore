@@ -1,3 +1,35 @@
+# Build output
+build/
+out/
+
+# Visual Studio
+.vs/
+*.vsidx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+
+# vcpkg / Conan package dirs (if used)
+vcpkg_installed/
+.conan/
+
+# IDE
+.vscode/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Prerequisites
 *.d
 
