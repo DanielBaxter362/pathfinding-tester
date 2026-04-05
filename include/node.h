@@ -6,8 +6,6 @@ struct node
     int n;
 
     node(int n);
-
-    int h(int goalx, int goaly);
 };
 
 struct hnode : node

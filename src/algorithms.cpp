@@ -17,7 +17,8 @@ std::vector<node> dijkstra(std::vector<node> nodes,
     binHeap pq = binHeap();
 
     int len = nodes.size();
-    int goal, start = 0;
+    int goal = 0;
+    int start = 0;
 
     std::vector<node> path;
     std::vector<bool> visited(len);

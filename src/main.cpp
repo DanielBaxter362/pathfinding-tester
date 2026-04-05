@@ -8,8 +8,14 @@
 
 #include "TimesNewRoman.h"
 
+#include "node.h"
+#include "algorithms.h"
+#include "main.h"
 #include <stdio.h>
 #include <iostream>
+#include <vector>
+
+guiNode::guiNode(int n, ImVec2 pos) : n(n), pos(pos) {};
 
 static void glfw_error_callback(int error, const char* description){
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -76,6 +82,13 @@ int main() {
 
     io.Fonts->AddFontFromMemoryTTF(timesNewRoman, timesNewRomanSize, 16.0f, &fontConfig);
 
+    //State
+    std::vector<guiNode> guiNodes = {};
+    std::vector<node> nodes = {};
+    std::vector<hnode> hnodes = {};
+
+    ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
+
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -95,8 +108,6 @@ int main() {
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(io.DisplaySize);
 
-        //------------------------------------------------------------------------------
-
         ImGui::Begin("Hello, world!", nullptr, 
             ImGuiWindowFlags_NoTitleBar  |
             ImGuiWindowFlags_NoMove      |
@@ -105,13 +116,17 @@ int main() {
             ImGuiWindowFlags_NoBringToFrontOnFocus
             );
 
+        //------------------------------------------------------------------------------
 
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec2 origin = ImGui::GetCursorScreenPos();
 
-        ImGui::Text("This is some useful text.");
-
-        ImGui::End();
+        drawList->AddRect(origin, ImVec2(origin.x + 100.0f, origin.y + 100.0f), colourBlue, 0.0f, 0, 3.0f);
+        drawList->AddCircleFilled(ImVec2(origin.x + 20.0f, origin.y + 20.0f), 20.0f, colourBlue);
 
         //------------------------------------------------------------------------------
+
+        ImGui::End();
         
         // Rendering
         ImGui::Render();
