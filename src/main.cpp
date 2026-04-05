@@ -2,7 +2,9 @@
 
 #include "GLFW/glfw3.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
@@ -14,6 +16,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <vector>
+#include <string>
 
 guiNode::guiNode(int n, ImVec2 pos) : n(n), pos(pos) {};
 
@@ -83,11 +86,22 @@ int main() {
     io.Fonts->AddFontFromMemoryTTF(timesNewRoman, timesNewRomanSize, 16.0f, &fontConfig);
 
     //State
+    const ImVec2 graphBound = ImVec2(800.0f, 400.0f);
+    const ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
+    const ImU32 colourBlack = IM_COL32(0, 0, 0, 255);
+    const float nodeRadius = 20.0f;
+
     std::vector<guiNode> guiNodes = {};
     std::vector<node> nodes = {};
     std::vector<hnode> hnodes = {};
 
-    ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
+    int dragNode = -1;
+
+    float positions[4] = { 20.0f, 100.0f, 150.0f, 300.0f };
+    for (int i = 0; i < 4; i++) {
+        guiNodes.push_back(guiNode(i, ImVec2(positions[i], positions[i])));
+        nodes.push_back(i);
+    }
 
 
     while (!glfwWindowShouldClose(window)) {
@@ -108,26 +122,53 @@ int main() {
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(io.DisplaySize);
 
-        ImGui::Begin("Hello, world!", nullptr, 
-            ImGuiWindowFlags_NoTitleBar  |
-            ImGuiWindowFlags_NoMove      |
-            ImGuiWindowFlags_NoResize    |
+        ImGui::Begin("Hello, world!", nullptr,
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoBringToFrontOnFocus
-            );
+        );
 
         //------------------------------------------------------------------------------
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         ImVec2 origin = ImGui::GetCursorScreenPos();
 
-        drawList->AddRect(origin, ImVec2(origin.x + 100.0f, origin.y + 100.0f), colourBlue, 0.0f, 0, 3.0f);
-        drawList->AddCircleFilled(ImVec2(origin.x + 20.0f, origin.y + 20.0f), 20.0f, colourBlue);
+        drawList->AddRect(origin, graphBound + origin, colourBlue, 0.0f, 0, 3.0f);
+
+        //Draw nodes and move if dragged
+        for (guiNode& node : guiNodes) {
+            std::string index = std::to_string(node.n);
+            ImVec2 textOffset = ImGui::CalcTextSize(index.c_str()) / 2;
+
+            if (ImGui::IsWindowHovered()) {
+                ImVec2 mousePos = ImGui::GetMousePos() - origin;
+                bool hovered = ImLengthSqr(mousePos - node.pos) < nodeRadius * nodeRadius;
+
+                if (hovered && ImGui::IsMouseDown(0) && dragNode == -1) {
+                    dragNode = node.n;
+                }
+
+                if (dragNode == node.n) {
+                    node.pos = node.pos + ImGui::GetIO().MouseDelta;
+                }
+
+                if (ImGui::IsMouseReleased(0)) {
+                    dragNode = -1;
+                }
+            }
+
+            ImVec2 nodeDrawPos = origin + node.pos;
+
+            drawList->AddCircleFilled(nodeDrawPos, nodeRadius, colourBlue);
+            drawList->AddText(nodeDrawPos - textOffset, colourBlack, index.c_str());
+        }
 
         //------------------------------------------------------------------------------
 
         ImGui::End();
-        
+
         // Rendering
         ImGui::Render();
         int display_w, display_h;
@@ -138,7 +179,7 @@ int main() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
-    }
+    };
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
@@ -149,4 +190,4 @@ int main() {
     glfwTerminate();
 
     return 0;
-}
+};
