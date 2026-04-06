@@ -89,6 +89,7 @@ int main() {
 
     //State
     const ImVec2 graphSize = ImVec2(800.0f, 400.0f);
+    const ImVec2 menuBoxSize = ImVec2(800.0f, 600.0f);
     const float nodeRadius = 20.0f;
 
     const ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
@@ -150,10 +151,13 @@ int main() {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         float windowWidth = ImGui::GetWindowWidth();
 
-        ImVec2 graphStart = ImVec2(ImVec2(origin.x + (windowWidth / 2) - (graphSize.x / 2), origin.y));
-        ImVec2 graphEnd = ImVec2(origin.x + (windowWidth / 2) + (graphSize.x / 2), origin.y + graphSize.y);
+        ImVec2 graphStart = ImVec2(origin.x + (windowWidth / 2) - (graphSize.x / 2), origin.y);
+        ImVec2 graphEnd = ImVec2(origin.x + (windowWidth / 2) + (graphSize.x / 2), graphStart.y + graphSize.y);
+        ImVec2 menuBoxStart = ImVec2(origin.x + (windowWidth / 2) - (menuBoxSize.x / 2), graphEnd.y + 20.0f);
+        ImVec2 menuBoxEnd = ImVec2(origin.x + (windowWidth / 2) + (menuBoxSize.x / 2), menuBoxStart.y + menuBoxSize.y);
 
         drawList->AddRect(graphStart, graphEnd, colourBlue, 0.0f, 0, 5.0f);
+        drawList->AddRect(menuBoxStart, menuBoxEnd, colourBlue, 0.0f, 0, 5.0f);
 
         ImVec2 mousePos = ImGui::GetMousePos() - origin;
         ImVec2 mousePosOnGraph = ImGui::GetMousePos() - graphStart;
