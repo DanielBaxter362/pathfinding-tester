@@ -86,21 +86,30 @@ int main() {
     io.Fonts->AddFontFromMemoryTTF(timesNewRoman, timesNewRomanSize, 16.0f, &fontConfig);
 
     //State
-    const ImVec2 graphBound = ImVec2(800.0f, 400.0f);
+    const ImVec2 graphSize = ImVec2(800.0f, 400.0f);
+    const float nodeRadius = 20.0f;
+
     const ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
     const ImU32 colourBlack = IM_COL32(0, 0, 0, 255);
-    const float nodeRadius = 20.0f;
+    const ImU32 colourAqua = IM_COL32(21, 45, 50, 255);
 
     std::vector<guiNode> guiNodes = {};
     std::vector<node> nodes = {};
     std::vector<hnode> hnodes = {};
+    std::vector<std::vector<bool>> edgeMatrix = {};
 
     int dragNode = -1;
 
     float positions[4] = { 20.0f, 100.0f, 150.0f, 300.0f };
     for (int i = 0; i < 4; i++) {
         guiNodes.push_back(guiNode(i, ImVec2(positions[i], positions[i])));
-        nodes.push_back(i);
+        nodes.push_back(node(i));
+        
+        for (std::vector<bool>& vect : edgeMatrix) {
+            vect.push_back(true);
+        }
+
+        edgeMatrix.push_back(std::vector<bool>(nodes.size(), true));
     }
 
 
@@ -134,32 +143,65 @@ int main() {
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         ImVec2 origin = ImGui::GetCursorScreenPos();
+        float windowWidth = ImGui::GetWindowWidth();
 
-        drawList->AddRect(origin, graphBound + origin, colourBlue, 0.0f, 0, 3.0f);
+        ImVec2 graphStart = ImVec2(ImVec2(origin.x + (windowWidth / 2) - (graphSize.x / 2), origin.y));
+        ImVec2 graphEnd = ImVec2(origin.x + (windowWidth / 2) + (graphSize.x / 2), origin.y + graphSize.y);
 
-        //Draw nodes and move if dragged
-        for (guiNode& node : guiNodes) {
+        drawList->AddRect(graphStart, graphEnd, colourBlue, 0.0f, 0, 5.0f);
+
+        int nodeCount = nodes.size();
+
+        //Draw edges
+        for (int i = 0; i < nodeCount; i++) {
+            for (int j = i + 1; j < nodeCount; j++) {
+                if (edgeMatrix[i][j]) {
+                    drawList->AddLine(graphStart + guiNodes[i].pos, graphStart + guiNodes[j].pos, IM_COL32(21, 45, 50, 255), 3.0f);
+                }
+            }
+        }
+
+        //Draw nodes
+        for (int i = 0; i < nodeCount; i++) {
+            guiNode& node = guiNodes[i];
             std::string index = std::to_string(node.n);
             ImVec2 textOffset = ImGui::CalcTextSize(index.c_str()) / 2;
+            ImVec2 nodeDrawPos = graphStart + node.pos;
 
+            //Dragging
             if (ImGui::IsWindowHovered()) {
                 ImVec2 mousePos = ImGui::GetMousePos() - origin;
-                bool hovered = ImLengthSqr(mousePos - node.pos) < nodeRadius * nodeRadius;
+                bool hovered = ImLengthSqr(mousePos - nodeDrawPos) < nodeRadius * nodeRadius;
 
                 if (hovered && ImGui::IsMouseDown(0) && dragNode == -1) {
                     dragNode = node.n;
                 }
 
                 if (dragNode == node.n) {
-                    node.pos = node.pos + ImGui::GetIO().MouseDelta;
+                    ImVec2 delta = ImGui::GetIO().MouseDelta;
+                    nodeDrawPos += delta;
+
+                    if (nodeDrawPos.x + nodeRadius > graphEnd.x) {
+                        nodeDrawPos.x = graphEnd.x - nodeRadius;
+                    }
+                    else if (nodeDrawPos.x - nodeRadius < graphStart.x) {
+                        nodeDrawPos.x = graphStart.x + nodeRadius;
+                    }
+
+                    if (nodeDrawPos.y + nodeRadius > graphEnd.y) {
+                        nodeDrawPos.y = graphEnd.y - nodeRadius;
+                    }
+                    else if (nodeDrawPos.y - nodeRadius < graphStart.y) {
+                        nodeDrawPos.y = graphStart.y + nodeRadius;
+                    }
+
+                    node.pos = nodeDrawPos - graphStart;
                 }
 
                 if (ImGui::IsMouseReleased(0)) {
                     dragNode = -1;
                 }
             }
-
-            ImVec2 nodeDrawPos = origin + node.pos;
 
             drawList->AddCircleFilled(nodeDrawPos, nodeRadius, colourBlue);
             drawList->AddText(nodeDrawPos - textOffset, colourBlack, index.c_str());
