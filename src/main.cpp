@@ -17,6 +17,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <utility>
+#include <algorithm>
 
 guiNode::guiNode(int n, ImVec2 pos) : n(n), pos(pos) {};
 
@@ -92,6 +94,7 @@ int main() {
     const ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
     const ImU32 colourBlack = IM_COL32(0, 0, 0, 255);
     const ImU32 colourAqua = IM_COL32(21, 45, 50, 255);
+    const ImU32 colourGreen = IM_COL32(17, 102, 58, 255);
 
     std::vector<guiNode> guiNodes = {};
     std::vector<node> nodes = {};
@@ -99,6 +102,8 @@ int main() {
     std::vector<std::vector<bool>> edgeMatrix = {};
 
     int dragNode = -1;
+    int selectedNode = -1;
+    std::pair<int, int> selectedEdge = { -1, -1 };
 
     float positions[4] = { 20.0f, 100.0f, 150.0f, 300.0f };
     for (int i = 0; i < 4; i++) {
@@ -111,7 +116,6 @@ int main() {
 
         edgeMatrix.push_back(std::vector<bool>(nodes.size(), true));
     }
-
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -139,10 +143,11 @@ int main() {
             ImGuiWindowFlags_NoBringToFrontOnFocus
         );
 
+        ImVec2 origin = ImGui::GetCursorScreenPos();
+
         //------------------------------------------------------------------------------
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        ImVec2 origin = ImGui::GetCursorScreenPos();
         float windowWidth = ImGui::GetWindowWidth();
 
         ImVec2 graphStart = ImVec2(ImVec2(origin.x + (windowWidth / 2) - (graphSize.x / 2), origin.y));
@@ -150,14 +155,48 @@ int main() {
 
         drawList->AddRect(graphStart, graphEnd, colourBlue, 0.0f, 0, 5.0f);
 
+        ImVec2 mousePos = ImGui::GetMousePos() - origin;
+        ImVec2 mousePosOnGraph = ImGui::GetMousePos() - graphStart;
+        bool mouseClicked = ImGui::IsMouseClicked(0);
+        bool windowHovered = ImGui::IsWindowHovered();
+
         int nodeCount = nodes.size();
+        bool nodeClicked = false;
+        bool edgeClicked = false;
 
         //Draw edges
         for (int i = 0; i < nodeCount; i++) {
             for (int j = i + 1; j < nodeCount; j++) {
-                if (edgeMatrix[i][j]) {
-                    drawList->AddLine(graphStart + guiNodes[i].pos, graphStart + guiNodes[j].pos, IM_COL32(21, 45, 50, 255), 3.0f);
+                if (! edgeMatrix[i][j]) {
+                    continue;
                 }
+
+                ImU32 colour = colourAqua;
+
+                //Select edge
+                if (windowHovered && mouseClicked && ! edgeClicked) {
+                    ImVec2& a = guiNodes[i].pos;
+                    ImVec2& b = guiNodes[j].pos;
+
+                    ImVec2 ab = b - a;
+                    ImVec2 ap = mousePosOnGraph - a;
+                    float t = (ap.x * ab.x + ap.y * ab.y) / (ab.x * ab.x + ab.y * ab.y);
+                    t = std::clamp(t, 0.0f, 1.0f);
+                    float dist = std::sqrt(ImLengthSqr(mousePosOnGraph - (a + ab * t)));
+
+                    if (dist < 2.0f) {
+                        edgeClicked = true;
+                        selectedEdge = { i, j };
+                    }
+                }
+
+                int& fst = selectedEdge.first;
+                int& snd = selectedEdge.second;
+                if ((i == fst && j == snd) || (i == snd && j == fst)) {
+                    colour = colourGreen;
+                }
+
+                drawList->AddLine(graphStart + guiNodes[i].pos, graphStart + guiNodes[j].pos, colour, 3.0f);
             }
         }
 
@@ -167,14 +206,21 @@ int main() {
             std::string index = std::to_string(node.n);
             ImVec2 textOffset = ImGui::CalcTextSize(index.c_str()) / 2;
             ImVec2 nodeDrawPos = graphStart + node.pos;
+            ImU32 colour = colourBlue;
 
-            //Dragging
-            if (ImGui::IsWindowHovered()) {
-                ImVec2 mousePos = ImGui::GetMousePos() - origin;
-                bool hovered = ImLengthSqr(mousePos - nodeDrawPos) < nodeRadius * nodeRadius;
+            //Dragging & selecting
+            if (windowHovered) {
+                bool hovered = ImLengthSqr(mousePosOnGraph - node.pos) < nodeRadius * nodeRadius;
 
-                if (hovered && ImGui::IsMouseDown(0) && dragNode == -1) {
-                    dragNode = node.n;
+                if (hovered) {
+                    if (ImGui::IsMouseDown(0) && dragNode == -1) {
+                        dragNode = node.n;
+                    }
+
+                    if (mouseClicked && !nodeClicked) {
+                        nodeClicked = true;
+                        selectedNode = node.n;
+                    }
                 }
 
                 if (dragNode == node.n) {
@@ -198,13 +244,24 @@ int main() {
                     node.pos = nodeDrawPos - graphStart;
                 }
 
+                if (selectedNode == node.n) {
+                    colour = colourGreen;
+                }
+
                 if (ImGui::IsMouseReleased(0)) {
                     dragNode = -1;
                 }
             }
 
-            drawList->AddCircleFilled(nodeDrawPos, nodeRadius, colourBlue);
+            drawList->AddCircleFilled(nodeDrawPos, nodeRadius, colour);
             drawList->AddText(nodeDrawPos - textOffset, colourBlack, index.c_str());
+        }
+
+        if (!nodeClicked && mouseClicked) {
+            selectedNode = -1;
+        }
+        else if (!edgeClicked && mouseClicked) {
+            selectedEdge = { -1, -1 };
         }
 
         //------------------------------------------------------------------------------
