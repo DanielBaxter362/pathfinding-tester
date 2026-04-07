@@ -88,9 +88,14 @@ int main() {
     io.Fonts->AddFontFromMemoryTTF(timesNewRoman, timesNewRomanSize, 16.0f, &fontConfig);
 
     //State
+    const float spacingx = ImGui::GetStyle().ItemSpacing.x;
+    const float spacingy = ImGui::GetStyle().ItemSpacing.y;
     const ImVec2 graphSize = ImVec2(800.0f, 400.0f);
     const ImVec2 menuBoxSize = ImVec2(800.0f, 600.0f);
+    const ImVec2 buttonSize = ImVec2(120.0f, 30.0f);
+    const ImVec2 intInputSize = ImVec2(120.0f, buttonSize.y);
     const float nodeRadius = 20.0f;
+    const int maxNodes = 10;
 
     const ImU32 colourBlue = IM_COL32(21, 45, 84, 255);
     const ImU32 colourBlack = IM_COL32(0, 0, 0, 255);
@@ -105,6 +110,7 @@ int main() {
     int dragNode = -1;
     int selectedNode = -1;
     std::pair<int, int> selectedEdge = { -1, -1 };
+    std::pair<int, int> inputNodes = { 0, 0 };
 
     float positions[4] = { 20.0f, 100.0f, 150.0f, 300.0f };
     for (int i = 0; i < 4; i++) {
@@ -112,10 +118,10 @@ int main() {
         nodes.push_back(node(i));
         
         for (std::vector<bool>& vect : edgeMatrix) {
-            vect.push_back(true);
+            vect.push_back(false);
         }
 
-        edgeMatrix.push_back(std::vector<bool>(nodes.size(), true));
+        edgeMatrix.push_back(std::vector<bool>(nodes.size(), false));
     }
 
     while (!glfwWindowShouldClose(window)) {
@@ -168,6 +174,75 @@ int main() {
         bool nodeClicked = false;
         bool edgeClicked = false;
 
+        //MENU
+        //Delete node
+        ImGui::SetCursorPos(ImVec2(windowWidth / 2 - buttonSize.x - spacingx / 2, menuBoxStart.y + spacingy));
+        ImGui::BeginDisabled(selectedNode == -1);
+        if (ImGui::Button("Delete Node", buttonSize)) {
+            nodes.erase(nodes.begin() + selectedNode);
+            guiNodes.erase(guiNodes.begin() + selectedNode);
+            edgeMatrix.erase(edgeMatrix.begin() + selectedNode);
+            nodeCount = nodes.size();
+
+            for (int i = 0; i < nodeCount; i++) {
+                edgeMatrix[i].erase(edgeMatrix[i].begin() + selectedNode);
+            }
+
+            for (int i = selectedNode; i < nodeCount; i++) {
+                guiNodes[i].n = guiNodes[i].n - 1;
+            }
+
+            selectedNode = -1;
+            dragNode = -1;
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+
+        //Delete edge
+        ImGui::BeginDisabled(selectedEdge == std::pair<int, int>{-1, -1});
+        if (ImGui::Button("Delete Edge", buttonSize)) {
+            edgeMatrix[selectedEdge.first][selectedEdge.second] = false;
+            edgeMatrix[selectedEdge.second][selectedEdge.first] = false;
+
+            selectedEdge = { -1, -1 };
+        }
+        ImGui::EndDisabled();
+
+        //Add node
+        ImGui::SetCursorPosX(windowWidth / 2 - buttonSize.x - spacingx / 2);
+        ImGui::BeginDisabled(nodeCount >= maxNodes);
+        if (ImGui::Button("Add Node", buttonSize)) {
+            guiNodes.push_back(guiNode(nodeCount, graphSize / 2));
+            nodes.push_back(node(nodeCount));
+
+            for (int i = 0; i < nodeCount; i++) {
+                edgeMatrix[i].push_back(false);
+            }
+
+            edgeMatrix.push_back(std::vector<bool>(nodeCount + 1, false));
+            nodeCount = nodes.size();
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+
+        //Add edge
+        ImGui::BeginDisabled(inputNodes.first < 0 || inputNodes.first >= nodeCount
+            || inputNodes.second < 0 || inputNodes.second >= nodeCount
+            || inputNodes.first == inputNodes.second);
+        if (ImGui::Button("Add Edge", buttonSize)) {
+            edgeMatrix[inputNodes.first][inputNodes.second] = true;
+            edgeMatrix[inputNodes.second][inputNodes.first] = true;
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SetCursorPosX(windowWidth / 2 + spacingx / 2);
+        ImGui::SetNextItemWidth(intInputSize.x);
+        ImGui::InputInt("1", &inputNodes.first);
+        ImGui::SetCursorPosX(windowWidth / 2 + spacingx / 2);
+        ImGui::SetNextItemWidth(intInputSize.x);
+        ImGui::InputInt("2", &inputNodes.second);
+
+        //DRAWING
         //Draw edges
         for (int i = 0; i < nodeCount; i++) {
             for (int j = i + 1; j < nodeCount; j++) {
@@ -261,10 +336,10 @@ int main() {
             drawList->AddText(nodeDrawPos - textOffset, colourBlack, index.c_str());
         }
 
-        if (!nodeClicked && mouseClicked) {
+        if (!nodeClicked && mouseClicked && !ImGui::IsAnyItemHovered()) {
             selectedNode = -1;
         }
-        else if (!edgeClicked && mouseClicked) {
+        if (!edgeClicked && mouseClicked && !ImGui::IsAnyItemHovered()) {
             selectedEdge = { -1, -1 };
         }
 
